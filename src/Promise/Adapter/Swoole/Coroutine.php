@@ -159,7 +159,7 @@ class Coroutine extends Adapter
     {
         return self::create(function (callable $resolve, callable $reject) use ($promises) {
             if (empty($promises)) {
-                $reject(new PromiseException('Cannot race with an empty array of promises'));
+                $reject(new Promise('Cannot race with an empty array of promises'));
                 return;
             }
 

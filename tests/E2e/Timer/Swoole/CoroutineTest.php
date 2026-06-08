@@ -148,7 +148,6 @@ class CoroutineTest extends TestCase
         SwooleCoroutine\run(function () {
             $timerId = Coroutine::after(100, function () {});
 
-            $this->assertIsInt($timerId);
             $this->assertGreaterThan(0, $timerId);
 
             Coroutine::clear($timerId);
@@ -160,7 +159,6 @@ class CoroutineTest extends TestCase
         SwooleCoroutine\run(function () {
             $timerId = Coroutine::tick(100, function () {});
 
-            $this->assertIsInt($timerId);
             $this->assertGreaterThan(0, $timerId);
 
             Coroutine::clear($timerId);

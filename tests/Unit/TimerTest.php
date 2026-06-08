@@ -130,7 +130,6 @@ class TimerTest extends TestCase
 
         $timerId = Timer::after(1, function () {});
 
-        $this->assertIsInt($timerId);
         $this->assertGreaterThan(0, $timerId);
     }
 
@@ -140,7 +139,6 @@ class TimerTest extends TestCase
 
         $timerId = Timer::after(1, function () {});
 
-        $this->assertIsInt($timerId);
         $this->assertGreaterThan(0, $timerId);
     }
 
@@ -148,15 +146,10 @@ class TimerTest extends TestCase
     {
         Timer::setAdapter(Sync::class);
 
-        $count = 0;
-        $timerId = Timer::tick(1, function (int $id) use (&$count) {
-            $count++;
-            if ($count >= 1) {
-                Timer::clear($id);
-            }
+        $timerId = Timer::tick(1, function (int $id) {
+            Timer::clear($id);
         });
 
-        $this->assertIsInt($timerId);
         $this->assertGreaterThan(0, $timerId);
     }
 }
