@@ -350,21 +350,36 @@ class Process
                 if (\is_int($pid) && isset($pidsToWait[$pid])) {
                     unset($pidsToWait[$pid]);
                 }
-            } else {
-                if (\time() - $startTime > $maxWaitTime) {
-                    foreach ($this->workers as $worker) {
-                        if (isset($pidsToWait[$worker->pid])) {
-                            SwooleProcess::kill($worker->pid, SIGKILL);
-                        }
-                    }
-                    break;
-                }
+                continue;
+            }
 
-                if (SwooleCoroutine::getCid() > 0) {
-                    SwooleCoroutine::sleep(0.001); // 1ms
-                } else {
-                    \usleep(1000);
+            // No child was ready to reap. Drop any workers that have already
+            // exited and been reaped elsewhere so we neither wait on nor signal
+            // a dead PID. kill($pid, 0) only probes for existence (no signal is
+            // sent) and, unlike SIGKILL, does not warn when the PID is gone.
+            foreach (\array_keys($pidsToWait) as $pid) {
+                if (!SwooleProcess::kill($pid, 0)) {
+                    unset($pidsToWait[$pid]);
                 }
+            }
+
+            if (empty($pidsToWait)) {
+                break;
+            }
+
+            if (\time() - $startTime > $maxWaitTime) {
+                foreach (\array_keys($pidsToWait) as $pid) {
+                    if (SwooleProcess::kill($pid, 0)) {
+                        SwooleProcess::kill($pid, SIGKILL);
+                    }
+                }
+                break;
+            }
+
+            if (SwooleCoroutine::getCid() > 0) {
+                SwooleCoroutine::sleep(0.001); // 1ms
+            } else {
+                \usleep(1000);
             }
         }
 
