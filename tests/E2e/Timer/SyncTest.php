@@ -104,21 +104,15 @@ class SyncTest extends TestCase
     public function testAfterReturnsTimerId(): void
     {
         $timerId = Sync::after(1, function () {});
-        $this->assertIsInt($timerId);
         $this->assertGreaterThan(0, $timerId);
     }
 
     public function testTickReturnsTimerId(): void
     {
-        $count = 0;
-        $timerId = Sync::tick(1, function (int $id) use (&$count) {
-            $count++;
-            if ($count >= 1) {
-                Sync::clear($id);
-            }
+        $timerId = Sync::tick(1, function (int $id) {
+            Sync::clear($id);
         });
 
-        $this->assertIsInt($timerId);
         $this->assertGreaterThan(0, $timerId);
     }
 
@@ -136,14 +130,10 @@ class SyncTest extends TestCase
     public function testCallbackReceivesTimerId(): void
     {
         $receivedId = null;
-        $count = 0;
 
-        Sync::tick(1, function (int $id) use (&$receivedId, &$count) {
+        Sync::tick(1, function (int $id) use (&$receivedId) {
             $receivedId = $id;
-            $count++;
-            if ($count >= 1) {
-                Sync::clear($id);
-            }
+            Sync::clear($id);
         });
 
         $this->assertIsInt($receivedId);

@@ -124,10 +124,10 @@ class Coroutine extends Adapter
                     $channel->push(true);
                     return $value;
                 }, function ($err) use ($channel, &$error) {
-                    $channel->push(true);
                     if ($error === null) {
                         $error = $err;
                     }
+                    $channel->push(true);
                 });
                 $key++;
             }
@@ -159,7 +159,7 @@ class Coroutine extends Adapter
     {
         return self::create(function (callable $resolve, callable $reject) use ($promises) {
             if (empty($promises)) {
-                $reject(new PromiseException('Cannot race with an empty array of promises'));
+                $reject(new Promise('Cannot race with an empty array of promises'));
                 return;
             }
 

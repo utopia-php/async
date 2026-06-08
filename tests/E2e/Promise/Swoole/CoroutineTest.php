@@ -176,6 +176,34 @@ class CoroutineTest extends TestCase
         });
     }
 
+    public function testAllRejectsWhenABranchRejectsAfterYielding(): void
+    {
+        // Regression: the rejection handler in all() must record the error
+        // before signalling the channel. If it pushes first, the awaiting
+        // coroutine can drain the channel and read a still-null error, causing
+        // all() to resolve instead of reject. Async branches that yield before
+        // rejecting (the realistic case) are what expose the ordering.
+        SwooleCoroutine\run(function () {
+            $promises = [
+                Coroutine::async(function () {
+                    SwooleCoroutine::sleep(0.01);
+                    throw new \Exception('delayed failure');
+                }),
+                Coroutine::async(function () {
+                    SwooleCoroutine::sleep(0.01);
+                    return 'ok';
+                }),
+            ];
+
+            try {
+                Coroutine::all($promises)->await();
+                $this->fail('Expected rejection to propagate from all()');
+            } catch (\Exception $e) {
+                $this->assertEquals('delayed failure', $e->getMessage());
+            }
+        });
+    }
+
     public function testRace(): void
     {
         SwooleCoroutine\run(function () {

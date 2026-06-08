@@ -19,13 +19,6 @@ use Utopia\Async\Timer\Adapter;
 class Sync extends Adapter
 {
     /**
-     * Track whether tick timers should continue running
-     *
-     * @var array<int, bool>
-     */
-    private array $running = [];
-
-    /**
      * Sync adapter is always supported as it has no dependencies.
      *
      * @return bool Always returns true
@@ -81,15 +74,10 @@ class Sync extends Adapter
             'interval' => $milliseconds,
             'type' => 'tick',
         ];
-        $this->running[$timerId] = true;
 
-        while ($this->running[$timerId] ?? false) {
+        while ($this->doExists($timerId)) {
             \usleep($milliseconds * 1000);
-            if (isset($this->timers[$timerId]) && ($this->running[$timerId] ?? false)) {
-                $callback($timerId);
-            } else {
-                break;
-            }
+            $callback($timerId);
         }
 
         return $timerId;
@@ -108,7 +96,6 @@ class Sync extends Adapter
         }
 
         unset($this->timers[$timerId]);
-        unset($this->running[$timerId]);
 
         return true;
     }
@@ -120,7 +107,6 @@ class Sync extends Adapter
      */
     protected function doClearAll(): void
     {
-        $this->running = [];
         $this->timers = [];
     }
 }

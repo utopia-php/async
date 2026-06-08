@@ -14,6 +14,7 @@ namespace Utopia\Async\Timer;
  * Static methods are provided for API consistency with other facades.
  *
  * @internal Use Utopia\Async\Timer facade instead
+ * @phpstan-consistent-constructor
  * @package Utopia\Async\Timer
  */
 abstract class Adapter
