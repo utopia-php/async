@@ -1,6 +1,5 @@
 {
   "name": "utopia-php/async",
-  "version": "1.0.0",
   "description": "High-performance concurrent + parallel library with Promise and Parallel execution support for PHP.",
   "type": "library",
   "license": "MIT",
