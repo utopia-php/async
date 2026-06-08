@@ -124,10 +124,10 @@ class Coroutine extends Adapter
                     $channel->push(true);
                     return $value;
                 }, function ($err) use ($channel, &$error) {
-                    $channel->push(true);
                     if ($error === null) {
                         $error = $err;
                     }
+                    $channel->push(true);
                 });
                 $key++;
             }
