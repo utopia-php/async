@@ -3,6 +3,7 @@
 namespace Utopia\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use Utopia\Async\Exception\Serialization;
 use Utopia\Async\Serializer;
 
 class SerializerTest extends TestCase
@@ -48,7 +49,7 @@ class SerializerTest extends TestCase
         };
 
         $serialized = Serializer::serialize($closure);
-        $unserialized = Serializer::unserialize($serialized);
+        $unserialized = Serializer::unserializeTrusted($serialized);
 
         $this->assertInstanceOf(\Closure::class, $unserialized);
         /** @var \Closure(int): int $unserialized */
@@ -66,7 +67,7 @@ class SerializerTest extends TestCase
         ];
 
         $serialized = Serializer::serialize($data);
-        $unserialized = Serializer::unserialize($serialized);
+        $unserialized = Serializer::unserializeTrusted($serialized);
 
         $this->assertIsArray($unserialized);
         /** @var array{name: string, value: int, callback: callable(int): int} $unserialized */
@@ -88,7 +89,7 @@ class SerializerTest extends TestCase
         ];
 
         $serialized = Serializer::serialize($data);
-        $unserialized = Serializer::unserialize($serialized);
+        $unserialized = Serializer::unserializeTrusted($serialized);
 
         $this->assertIsArray($unserialized);
         /** @var array{level1: array{level2: array{callback: callable(int): int}}} $unserialized */
@@ -119,7 +120,7 @@ class SerializerTest extends TestCase
         };
 
         $serialized = Serializer::serialize($obj);
-        $unserialized = Serializer::unserialize($serialized, ['allowed_classes' => true]);
+        $unserialized = Serializer::unserializeTrusted($serialized, ['allowed_classes' => true]);
 
         $this->assertInstanceOf(\stdClass::class, $unserialized);
         /** @var \stdClass&object{name: string, callback: callable} $unserialized */
@@ -184,7 +185,7 @@ class SerializerTest extends TestCase
         ]]]]];
 
         $serialized = Serializer::serialize($data);
-        $unserialized = Serializer::unserialize($serialized);
+        $unserialized = Serializer::unserializeTrusted($serialized);
 
         $this->assertIsArray($unserialized);
         // Closure should be found and properly serialized
@@ -318,6 +319,59 @@ class SerializerTest extends TestCase
         }
     }
 
+    public function testUnserializeRefusesClosurePayloadByDefault(): void
+    {
+        SerializerProbe::$restored = 0;
+        $payload = Serializer::serialize([
+            'task' => fn (): int => 1,
+            'probe' => new SerializerProbe(),
+        ]);
+
+        try {
+            Serializer::unserialize($payload);
+            $this->fail('A closure payload must not be decoded without opting in to trusted decoding');
+        } catch (Serialization $exception) {
+            $this->assertStringContainsString('unserializeTrusted', $exception->getMessage());
+        }
+
+        $this->assertSame(0, SerializerProbe::$restored, 'No object inside a refused payload may be instantiated');
+    }
+
+    public function testUnserializeRefusesClosurePayloadWithAllowedClasses(): void
+    {
+        $payload = Serializer::serialize(fn (): SerializerProbe => new SerializerProbe());
+
+        $this->expectException(Serialization::class);
+
+        Serializer::unserialize($payload, ['allowed_classes' => true]);
+    }
+
+    public function testUnserializeTrustedRestoresClosurePayload(): void
+    {
+        SerializerProbe::$restored = 0;
+        $payload = Serializer::serialize([
+            'task' => fn (int $x): int => $x * 2,
+            'probe' => new SerializerProbe(),
+        ]);
+
+        $unserialized = Serializer::unserializeTrusted($payload);
+
+        $this->assertIsArray($unserialized);
+        /** @var array{task: \Closure(int): int, probe: SerializerProbe} $unserialized */
+        $this->assertSame(10, $unserialized['task'](5));
+        $this->assertInstanceOf(SerializerProbe::class, $unserialized['probe']);
+        $this->assertSame('probe', $unserialized['probe']->value);
+        $this->assertSame(1, SerializerProbe::$restored);
+    }
+
+    public function testUnserializeTrustedDecodesPlainPayloadWithoutClasses(): void
+    {
+        $payload = Serializer::serialize(new SerializerProbe());
+
+        $this->assertInstanceOf(\__PHP_Incomplete_Class::class, Serializer::unserializeTrusted($payload));
+        $this->assertSame(['a' => 1], Serializer::unserializeTrusted(Serializer::serialize(['a' => 1])));
+    }
+
     /**
      * Test fast detection of Opis\Closure serialized data.
      */
@@ -330,7 +384,7 @@ class SerializerTest extends TestCase
         $this->assertStringContainsString('Opis\Closure\\', $serialized);
 
         // Should deserialize correctly using fast detection
-        $unserialized = Serializer::unserialize($serialized);
+        $unserialized = Serializer::unserializeTrusted($serialized);
         /** @var callable $unserialized */
         $this->assertEquals('test', $unserialized());
     }

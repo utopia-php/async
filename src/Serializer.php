@@ -2,11 +2,11 @@
 
 namespace Utopia\Async;
 
+use Utopia\Async\Exception\Serialization;
+
 /**
- * High-performance serializer with igbinary support.
- *
- * Uses igbinary extension if available for 2-3x faster serialization,
- * falls back to standard PHP serialize() when not available.
+ * Serializer for task payloads: opis/closure for data containing closures,
+ * standard PHP serialize() for everything else.
  *
  * @package Utopia\Async
  */
@@ -40,26 +40,61 @@ class Serializer
     }
 
     /**
-     * Unserialize data using opis/closure for Closures and standard unserialization for everything else.
+     * Unserialize plain data. Objects are restored only for the classes allowed by the
+     * caller's options (none by default) and closure payloads are refused, because decoding
+     * them can instantiate any class. Use unserializeTrusted() for data from a trusted channel.
+     *
+     * @param string $data
+     * @param array{allowed_classes?: bool|array<class-string>} $options Options for unserialize
+     * @return mixed
+     * @throws Serialization If the data is a closure payload
+     * @throws \RuntimeException If unserialization fails or data is invalid
+     */
+    public static function unserialize(string $data, array $options = []): mixed
+    {
+        if (\str_starts_with($data, self::OPIS_CLOSURE_PREFIX)) {
+            throw new Serialization('Refusing to decode a closure payload: use Serializer::unserializeTrusted() for data from a trusted channel');
+        }
+
+        return self::unserializePlain($data, $options);
+    }
+
+    /**
+     * Unserialize data from a trusted channel, restoring closures and the objects they carry.
+     * Only use this for payloads produced by this process or its own workers: a closure payload
+     * can rebuild objects that the allowed_classes option does not govern.
      *
      * @param string $data
      * @param array{allowed_classes?: bool|array<class-string>} $options Options for unserialize
      * @return mixed
      * @throws \RuntimeException If unserialization fails or data is invalid
      */
-    public static function unserialize(string $data, array $options = []): mixed
+    public static function unserializeTrusted(string $data, array $options = []): mixed
     {
-        if (empty($data)) {
-            throw new \RuntimeException('Cannot unserialize empty data');
+        if (!\str_starts_with($data, self::OPIS_CLOSURE_PREFIX)) {
+            return self::unserializePlain($data, $options);
         }
 
-        // Fast prefix check - only check first 3 bytes
-        if (\str_starts_with($data, self::OPIS_CLOSURE_PREFIX)) {
-            $opisData = \substr($data, 3);
-            $result = @\Opis\Closure\unserialize($opisData, $options);
-            if ($result !== false || $opisData === \Opis\Closure\serialize(false)) {
-                return $result;
-            }
+        $closureData = \substr($data, \strlen(self::OPIS_CLOSURE_PREFIX));
+        $result = @\Opis\Closure\unserialize($closureData, $options);
+
+        if ($result !== false || $closureData === \Opis\Closure\serialize(false)) {
+            return $result;
+        }
+
+        throw new \RuntimeException('Failed to unserialize data');
+    }
+
+    /**
+     * @param string $data
+     * @param array{allowed_classes?: bool|array<class-string>} $options
+     * @return mixed
+     * @throws \RuntimeException If unserialization fails or data is invalid
+     */
+    private static function unserializePlain(string $data, array $options): mixed
+    {
+        if ($data === '') {
+            throw new \RuntimeException('Cannot unserialize empty data');
         }
 
         /** @var array{allowed_classes?: bool|array<class-string>} $mergedOptions */

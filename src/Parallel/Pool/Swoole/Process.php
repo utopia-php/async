@@ -76,9 +76,8 @@ class Process
                         break;
                     }
 
-                    // Deserialize the entire message with Serializer (handles closures automatically)
                     try {
-                        $taskData = Serializer::unserialize(\is_string($message) ? $message : '');
+                        $taskData = Serializer::unserializeTrusted(\is_string($message) ? $message : '');
                     } catch (\Throwable $e) {
                         continue;
                     }
@@ -224,7 +223,7 @@ class Process
                 }
 
                 try {
-                    $result = Serializer::unserialize(\is_string($response) ? $response : '');
+                    $result = Serializer::unserializeTrusted(\is_string($response) ? $response : '');
                 } catch (\Throwable $e) {
                     continue;
                 }

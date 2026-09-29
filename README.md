@@ -224,6 +224,23 @@ try {
 }
 ```
 
+## Serialization
+
+`Serializer::serialize()` encodes data containing closures with `opis/closure` and everything else with PHP's `serialize()`. Decoding a closure payload can rebuild objects of any class, so it is an explicit opt-in:
+
+```php
+use Utopia\Async\Serializer;
+
+// Plain data only: objects are restored only for the allowed classes (none by default),
+// and a closure payload throws Utopia\Async\Exception\Serialization
+$data = Serializer::unserialize($payload);
+$data = Serializer::unserialize($payload, ['allowed_classes' => [MyValue::class]]);
+
+// Closures and the objects they carry, for payloads from a trusted channel only
+// (this process or its own workers, never user input, caches or queues)
+$task = Serializer::unserializeTrusted($payload);
+```
+
 ## Configuration
 
 Both `Parallel` and `Promise` facades expose configurable options via static getter/setter methods.
