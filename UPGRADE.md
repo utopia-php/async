@@ -6,6 +6,8 @@
 
 `Serializer::unserialize()` no longer decodes closure payloads. It throws `Utopia\Async\Exception\Serialization` for them, because `opis/closure` rebuilds the objects inside such a payload by reflection, outside the control of the `allowed_classes` option.
 
+`Serialization` extends `Utopia\Async\Exception`, not `\RuntimeException`: code that catches only `\RuntimeException` around `Serializer::unserialize()` must also catch `Serialization` (or `\Exception`) to handle a refused payload.
+
 If you pass closures between processes you control, switch those call sites to `Serializer::unserializeTrusted()`:
 
 ```php
