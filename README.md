@@ -1,5 +1,8 @@
 # Utopia Async
 
+> [!IMPORTANT]
+> This repository is archived. Utopia Async now lives in `packages/async` of Appwrite's Edge repository, its only consumer, where it is developed and loaded directly. No further releases are published here.
+
 [![License](https://img.shields.io/github/license/utopia-php/async.svg)](https://github.com/utopia-php/async/blob/main/LICENSE)
 
 A high-performance async/parallel library for PHP 8.1+ providing [Promises/A+](https://promisesaplus.com/) compliant promises and true multi-core parallel execution.
